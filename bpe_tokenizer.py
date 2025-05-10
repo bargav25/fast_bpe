@@ -3,19 +3,7 @@ import pickle
 from collections import defaultdict, Counter
 from typing import Dict, Tuple, List, Iterable, Iterator
 from pathlib import Path
-from concurrent.futures import ProcessPoolExecutor
 
-# Worker function for parallel encoding
-def _encode_lines_worker(args):
-    """
-    Worker for parallel_encode_file: loads tokenizer from pickle and encodes a chunk of lines.
-    """
-    lines_chunk, pickle_path = args
-    tokenizer = BPETokenizer.from_file(pickle_path)
-    ids: List[int] = []
-    for line in lines_chunk:
-        ids.extend(tokenizer.encode(line))
-    return ids
 
 def merge(token: List[int], pair: Tuple[int, int], new_id: int) -> List[int]:
     """
@@ -84,11 +72,14 @@ class BPETokenizer:
 
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
         """
-        Lazily encode lines from an iterable (e.g., file handle), yielding token IDs one by one.
+        Lazily encode lines from an iterable, yielding token IDs one by one.
         """
-        for text in iterable:
-            for token_id in self.encode(text):
-                yield token_id
+        for line in iterable:
+            line = line.strip()
+            if not line:
+                continue
+            token_ids = self.encode(line)
+            yield from token_ids
 
     def decode(self, ids: List[int]) -> str:
         """
@@ -114,24 +105,11 @@ class BPETokenizer:
         inst.tokenizer_file = filepath
         return inst
 
-    def parallel_encode_file(self, file_path: str, num_workers: int = 8) -> List[int]:
-        """
-        Encode an entire file in parallel, returning a flat list of token IDs.
-        """
-        lines = Path(file_path).read_text(encoding='utf-8').splitlines(keepends=True)
-        chunks = [lines[i::num_workers] for i in range(num_workers)]
-        args = [(chunk, self.tokenizer_file) for chunk in chunks]
-
-        all_ids: List[int] = []
-        with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            for ids in executor.map(_encode_lines_worker, args):
-                all_ids.extend(ids)
-        return all_ids
+ 
 
 if __name__ == "__main__":
 
     tokenizer = BPETokenizer.from_file("output/bpe_tokenizer.pkl")
-
 
     ids = tokenizer("Hello, how you are doing ? <|endoftext|> I am sardar gabbarsingh haha!!, <|endoftext|> naam tho suna hoga ")
 

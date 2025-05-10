@@ -6,6 +6,7 @@ from collections import defaultdict, Counter
 from tqdm import tqdm
 import pickle
 import time 
+import argparse
 
 def merge(token: Tuple[int], pair: Tuple[int, int], new_id: int) -> Tuple[int]:
     res, i = [], 0
@@ -134,9 +135,14 @@ if __name__ == "__main__":
 
     special_tokens = ["<|endoftext|>"]
 
-    vocab, merges = train_bpe_tokenizer("data/TinyStoriesV2-GPT4-train.txt", 10000, special_tokens)
+    parser = argparse.ArgumentParser()
 
-    save_tokenizer_data("output/bpe_tokenizer.pkl", vocab, merges, special_tokens)
+    parser.add_argument("--vocab_size", help = "vocab_size", default=10000, type=int)
+    parser.add_argument("--input", help = "input text file path")
+    parser.add_argument("--output", help = "output pkl file path for saving tokenizer")
 
+    args = parser.parse_args()
 
+    vocab, merges = train_bpe_tokenizer(args.input, args.vocab_size, special_tokens)
 
+    save_tokenizer_data(args.output, vocab, merges, special_tokens)
